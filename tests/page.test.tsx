@@ -14,7 +14,8 @@ import { progressFrom } from "@/motion/useSectionProgress";
 
 test("футер дословно", () => { render(<Footer />); expect(screen.getByText("Концепт AVA AGENCY для кофейни „Пенка“. Не официальный сайт. Цены — по меню доставки на 4 октября 2026, в зале могут отличаться")).toBeInTheDocument(); });
 test("в шапке чип концепта", () => { render(<Header theme={sections[0]} />); expect(screen.getByText("концепт AVA")).toBeInTheDocument(); });
-test("на странице все позиции", () => { render(<Page />); menu.forEach(i => expect(screen.getAllByText(i.name).length).toBeGreaterThan(0)); });
+// рендер всей страницы в jsdom тяжёлый: под нагрузкой на машине идёт 5–7 с — запас, чтобы тест не падал по таймеру
+test("на странице все позиции", () => { render(<Page />); menu.forEach(i => expect(screen.getAllByText(i.name).length).toBeGreaterThan(0)); }, 20_000);
 
 // ───────── страница ─────────
 

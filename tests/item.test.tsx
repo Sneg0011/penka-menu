@@ -8,6 +8,7 @@ import { useState } from "react";
 import { AllergenChips } from "@/components/AllergenChips";
 import { ItemRow } from "@/components/ItemRow";
 import { ItemSheet } from "@/components/ItemSheet";
+import { tasteWords } from "@/lib/facts";
 import { Sheet, SHEET_PALETTE } from "@/components/Sheet";
 import { reviews } from "@/content/habits";
 import { menu } from "@/content/menu";
@@ -52,25 +53,26 @@ test("раф «Фисташковый»: цена угадана — «≈» и 
   expect(screen.getAllByText(/примерно/)).toHaveLength(2);
 });
 
-test("вкус точками, у каждой шкалы своя подпись для скринридера", () => {
+test("вкус в строке — словами, без значков и точек; точки остаются в шторке", () => {
   render(<ItemRow item={item("latte")} onOpen={() => {}} />); // сладость 2, горечь 1, кислинка 0, крепость 1
-  expect(screen.getByLabelText("сладость 2 из 3")).toBeInTheDocument();
-  expect(screen.getByLabelText("горечь 1 из 3")).toBeInTheDocument();
-  expect(screen.getByLabelText("кислинка 0 из 3")).toBeInTheDocument();
-  expect(screen.getByLabelText("крепость 1 из 3")).toBeInTheDocument();
+  expect(screen.getByText("Сладковатый, мягкий")).toBeInTheDocument();
+  expect(screen.queryByLabelText(/сладость|крепость/)).toBeNull();
   expect(screen.getByText("170 ккал")).toBeInTheDocument();
 });
 
-test("у позиций без эспрессо нет крепости", () => {
-  render(<ItemRow item={item("tea-green")} onOpen={() => {}} />);
-  expect(screen.queryByLabelText(/крепость/)).toBeNull();
-  expect(screen.getByLabelText(/сладость/)).toBeInTheDocument();
+test("вкус словами: крепость 3 первой, затем выраженные шкалы; без шкал — ничего", () => {
+  expect(tasteWords(item("espresso"))).toBe("Крепкий, горький");
+  expect(tasteWords(item("flat-white"))).toBe("Крепкий, с горчинкой");
+  expect(tasteWords(item("raf-pistachio"))).toBe("Сладкий, мягкий");
+  expect(tasteWords(item("mors-cranberry"))).toBe("С яркой кислинкой");
+  expect(tasteWords(item("tea-green"))).toBe("Мягкий");
+  expect(tasteWords(menu.find((i) => !i.taste)!)).toBeNull();
 });
 
-test("аллергены короткими чипами, «можно на растительном» только у тех, у кого plantMilk", () => {
+test("аллергенов в строке нет (они в шторке), «можно на растительном» только у тех, у кого plantMilk", () => {
   const { unmount } = render(<ItemRow item={item("raf-pistachio")} onOpen={() => {}} />);
-  expect(screen.getByText("лактоза")).toBeInTheDocument();
-  expect(screen.getByText("орехи")).toBeInTheDocument();
+  expect(screen.queryByText("лактоза")).toBeNull();
+  expect(screen.queryByText("орехи")).toBeNull();
   expect(screen.queryByText("можно на растительном")).toBeNull();
   unmount();
   render(<ItemRow item={item("latte")} onOpen={() => {}} />);

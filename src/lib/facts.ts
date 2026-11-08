@@ -22,6 +22,31 @@ export const isPriceApprox = (item: Item): boolean => !item.real || item.priceGu
 /** «250 мл» / «≈ 250 мл». */
 export const sizeText = (item: Item): string => (isSizeApprox(item) ? `≈ ${item.size}` : item.size);
 
+const NOTES: readonly { key: "sweet" | "bitter" | "sour"; words: Partial<Record<number, string>> }[] = [
+  { key: "sweet", words: { 2: "сладковатый", 3: "сладкий" } },
+  { key: "bitter", words: { 2: "с горчинкой", 3: "горький" } },
+  { key: "sour", words: { 2: "с кислинкой", 3: "с яркой кислинкой" } },
+];
+
+/**
+ * Вкус для строки меню словами, а не значками: «Крепкий, горький», «Сладковатый, мягкий», «С кислинкой».
+ * Не больше двух слов: крепость 3 — «крепкий» первым, затем самые выраженные шкалы (от 2 из 3), а мягкий эспрессо
+ * (крепость до 1) или напиток без выраженных нот — «мягкий». Без шкал вкуса (еда) — `null`.
+ */
+export function tasteWords(item: Item): string | null {
+  if (!item.taste) return null;
+  const parts: string[] = [];
+  if (item.strength === 3) parts.push("крепкий");
+  const notes = NOTES.map((n, order) => ({ ...n, value: item.taste![n.key], order })).sort((a, b) => b.value - a.value || a.order - b.order);
+  for (const n of notes) {
+    const word = n.words[n.value];
+    if (word && parts.length < 2) parts.push(word);
+  }
+  if (parts.length < 2 && (parts.length === 0 || (item.strength !== undefined && item.strength <= 1))) parts.push("мягкий");
+  const text = parts.join(", ");
+  return text[0].toUpperCase() + text.slice(1);
+}
+
 /** Напиток меряют объёмом, блюдо — весом. */
 export const sizeKind = (item: Item): "Объём" | "Вес" => (/мл/.test(item.size) ? "Объём" : "Вес");
 

@@ -156,6 +156,9 @@ void main() {
   outColor = vec4(col, 1.0);
 }`;
 
+/** Разрешение холста перелива относительно CSS-пикселей и запасное, если видеокарта не успевает. */
+const RENDER_SCALE = 0.6;
+const LOW_SCALE = 0.4;
 /** Кадров в секунду в покое (дрейф жидкости). При прокрутке кадр рисуется на каждое изменение прогресса. */
 const IDLE_FPS = 30;
 /** После прокрутки жидкость ещё дрейфует и за это время затихает. */
@@ -252,15 +255,18 @@ export async function createPour(host: HTMLElement, onFallback: (reason: PourFal
   let lastDraw = -Infinity;
   let lastChange = performance.now();
   let alive = true;
-  let dprCap = 1.5;
-  // сторож: решает один раз за сессию и только вниз; на экране с DPR ≤ 1 снижать нечего — сразу CSS
-  const guard = { on: true, lowered: Math.min(window.devicePixelRatio || 1, dprCap) <= 1, warmup: GUARD_WARMUP, deltas: [] as number[] };
+  // Фон мягкий и размытый: холст считается в RENDER_SCALE от CSS-пикселей и растягивается стилем — в разы
+  // меньше работы видеокарте, на глаз без разницы. Сторож при заминках снижает до LOW_SCALE, потом уходит в CSS.
+  let renderScale = RENDER_SCALE;
+  const guard = { on: true, lowered: false, warmup: GUARD_WARMUP, deltas: [] as number[] };
+  // что нарисовано последним: без фронта на экране и при тех же разделах кадр не перерисовывается
+  let drawnKey = "";
   const slowMs = options.slowMs ?? 0;
 
   function fit() {
     const w = host.clientWidth;
     const h = host.clientHeight;
-    const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
+    const dpr = renderScale;
     const cw = Math.max(1, Math.round(w * dpr));
     const ch = Math.max(1, Math.round(h * dpr));
     if (canvas.width !== cw || canvas.height !== ch) {
@@ -330,7 +336,7 @@ export async function createPour(host: HTMLElement, onFallback: (reason: PourFal
     } else if (verdict === "lower-dpr") {
       guard.lowered = true;
       guard.warmup = GUARD_WARMUP;
-      dprCap = 1;
+      renderScale = LOW_SCALE;
       // холст меньше — перерисовать сразу, в том же кадре
       draw(now);
     } else {
@@ -364,6 +370,11 @@ export async function createPour(host: HTMLElement, onFallback: (reason: PourFal
       if (!alive) return;
       stack = next;
       lastChange = performance.now();
+      // фронта на экране нет и разделы те же — слой и так показывает то же самое: кадр не нужен
+      const key = next.ids.join(",");
+      const front = next.edges.some((e) => frontVisible(e, next.line - 2, height || host.clientHeight));
+      if (!front && key === drawnKey && canvas.isConnected) return;
+      drawnKey = front ? "" : key;
       draw(lastChange);
       // холст появляется в том же задании, что и первый кадр, — без чёрной вспышки
       if (!canvas.isConnected) host.appendChild(canvas);

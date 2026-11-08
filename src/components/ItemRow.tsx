@@ -4,11 +4,8 @@ import { useId } from "react";
 
 import { ItemArt } from "@/art/ItemArt";
 import type { Item } from "@/content/types";
-import { isPriceApprox, sizeText } from "@/lib/facts";
+import { isPriceApprox, sizeText, tasteWords } from "@/lib/facts";
 import { formatPrice } from "@/lib/price";
-
-import { AllergenChips } from "./AllergenChips";
-import { StrengthBars, TasteDots } from "./TasteDots";
 
 type Props = {
   item: Item;
@@ -17,14 +14,13 @@ type Props = {
 };
 
 /**
- * Компактная строка меню: рисунок 72 px, название и цена, значки (вкус точками и крепость; объём или вес
- * и калории) и чипы аллергенов. Вся строка — одна кнопка.
+ * Компактная строка меню: рисунок 72 px, название и цена, вкус словами («Сладковатый, мягкий»), объём или вес
+ * с калориями и — где правда — «можно на растительном». Вся строка — одна кнопка.
+ * Точки вкуса, крепость и аллергены — в шторке позиции: в строке они читались как шифр из значков.
  * Название никогда не обрезается: оно переносится (самое длинное — четыре строки на 360 px), а цена плавает справа
  * в первых строках и остаётся целиком на виду; ниже цены название занимает всю колонку.
- * В колонке 244 px значки в одну линию не влезают, поэтому они идут двумя короткими линиями —
- * у всех позиций одинаково.
  * Цвета наследует от раздела: текст — `currentColor`, приглушённый и акцент — `--muted` / `--accent`.
- * Вкус, калории и аллергены везде оценка, поэтому у значков одна пометка «примерно» на строку.
+ * Вкус, калории и аллергены везде оценка, поэтому у строки одна пометка «примерно» — в конце строки объёма.
  */
 export function ItemRow({ item, onOpen }: Props) {
   const uid = useId();
@@ -34,6 +30,7 @@ export function ItemRow({ item, onOpen }: Props) {
   const factsId = `${uid}-facts`;
 
   const priceApprox = isPriceApprox(item);
+  const taste = tasteWords(item);
 
   return (
     <button
@@ -41,16 +38,16 @@ export function ItemRow({ item, onOpen }: Props) {
       onClick={() => onOpen(item.id)}
       aria-labelledby={`${nameId} ${priceId}`}
       aria-describedby={priceApprox ? `${priceNoteId} ${factsId}` : factsId}
-      className="flex min-h-11 w-full items-start gap-3 px-4 py-3 text-left outline-none transition-colors hover:bg-current/[0.04] active:bg-current/[0.07] focus-visible:bg-current/[0.05] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-current/45"
+      className="flex min-h-11 w-full items-start gap-3.5 px-4 py-3.5 text-left outline-none transition-colors hover:bg-current/[0.04] active:bg-current/[0.07] focus-visible:bg-current/[0.05] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-current/45"
     >
       <span className="shrink-0">
         <ItemArt item={item} size={72} className="block" />
       </span>
 
-      <span className="min-w-0 flex-1">
+      <span className="min-w-0 flex-1 pt-0.5">
         <span className="flow-root">
           <span className="float-right ml-3 flex flex-col items-end">
-            <span id={priceId} className="text-[15px] leading-[1.25] font-semibold whitespace-nowrap tabular-nums">
+            <span id={priceId} className="text-[16px] leading-[1.25] font-semibold whitespace-nowrap tabular-nums">
               {formatPrice(item)}
             </span>
             {priceApprox && (
@@ -59,27 +56,21 @@ export function ItemRow({ item, onOpen }: Props) {
               </span>
             )}
           </span>
-          <span id={nameId} className="block text-[15px] leading-[1.25] font-semibold [overflow-wrap:anywhere]">
+          <span id={nameId} className="block text-[16px] leading-[1.25] font-semibold [overflow-wrap:anywhere]">
             {item.name}
           </span>
         </span>
 
-        <span id={factsId} className="pk-muted mt-1.5 flex flex-col gap-1 text-[11px] leading-4">
-          {(item.taste || item.strength !== undefined) && (
-            <span className="flex items-center gap-x-2.5">
-              {item.taste && <TasteDots taste={item.taste} />}
-              {item.strength !== undefined && <StrengthBars value={item.strength} />}
-            </span>
-          )}
-          <span className="flex flex-wrap items-center gap-x-2.5">
+        <span id={factsId} className="mt-1 flex flex-col gap-0.5 text-[13px] leading-[1.35]">
+          {taste && <span className="font-medium">{taste}</span>}
+          <span className="pk-muted">
             <span className="whitespace-nowrap">{sizeText(item)}</span>
+            <span aria-hidden="true"> · </span>
             <span className="whitespace-nowrap">{item.kcal} ккал</span>
-            <span className="italic">примерно</span>
+            <span aria-hidden="true"> · </span>
+            <span>примерно</span>
           </span>
-        </span>
-
-        <span className="mt-1.5 block empty:hidden">
-          <AllergenChips allergens={item.allergens} plantMilk={item.plantMilk} />
+          {item.plantMilk && <span className="pk-accent text-[12px] font-medium">можно на растительном</span>}
         </span>
       </span>
     </button>

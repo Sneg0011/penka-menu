@@ -50,9 +50,10 @@ const FOV = 18;
 const PIVOT = 56;
 /** Струя: отрезков вдоль и по кругу, толщина у прорези и внизу (мм). */
 const STREAM = { segments: 48, radial: 10, radius: 1.7, end: 0.55 } as const;
-/** Насколько заранее (до появления рамки на экране) собирать сцену и когда отпускать её после ухода. */
+/** Насколько заранее (до появления рамки на экране) собирать сцену. Собранная сцена не отпускается при уходе с
+ * первого экрана: пересборка (карта окружения, шейдеры) блокирует главный поток ~0,5 с, и каждое возвращение
+ * наверх подвисало бы. Вне экрана она просто не рисует ни одного кадра (visible = false). */
 const NEAR_MARGIN = "400px 0px";
-const RELEASE_DELAY = 700;
 /** Рисовать начинаем чуть раньше, чем рамка покажется из-за края окна. */
 const VISIBLE_MARGIN = "64px 0px";
 /** Ось наклона: горизонтальная, поперёк направления наклона HERO.azimuth. */
@@ -500,7 +501,6 @@ function mountCup(box: HTMLElement): () => void {
   let near = false;
   let visible = false;
   let frame = 0;
-  let releaseTimer = 0;
   let drawn = "";
 
   const draw = () => {
@@ -518,7 +518,6 @@ function mountCup(box: HTMLElement): () => void {
   };
 
   const release = () => {
-    window.clearTimeout(releaseTimer);
     box.dataset.cupMode = "svg";
     scene?.destroy();
     scene = null;
@@ -570,9 +569,7 @@ function mountCup(box: HTMLElement): () => void {
 
   const onNear: IntersectionObserverCallback = (entries) => {
     near = entries[entries.length - 1].isIntersecting;
-    window.clearTimeout(releaseTimer);
     if (near) void create();
-    else if (scene) releaseTimer = window.setTimeout(release, RELEASE_DELAY);
   };
   const onVisible: IntersectionObserverCallback = (entries) => {
     visible = entries[entries.length - 1].isIntersecting;

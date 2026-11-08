@@ -513,12 +513,19 @@ const scenarios = {
         check(moving >= steps * 0.8, `cup: при медленной прокрутке ${moving} вызовов отрисовки на ${steps} шагов — стаканчик отстаёт`);
         console.log(`cup: в покое ${idle} вызовов отрисовки, при прокрутке ${moving} на ${steps} шагов`);
 
-        // 5) прокрутили мимо первого экрана — холст убран (контекст отпущен), SVG на месте; вернулись — снова 3D
+        // 5) прокрутили мимо первого экрана — сцена остаётся (пересборка блокировала поток ~0,5 с на каждом возврате),
+        // но вне экрана не рисует ни одного кадра
         await page.evaluate(() => document.getElementById("raf").scrollIntoView({ behavior: "instant", block: "start" }));
         await waitScrollStill(page);
         await page.waitForTimeout(1200);
         const past = await geometry(page);
-        check(past.mode === "svg" && past.canvas === null && past.svgOpacity === "1", `cup: после прокрутки мимо холст не убран (${JSON.stringify({ mode: past.mode, canvas: past.canvas, svg: past.svgOpacity })})`);
+        const offStart = await draws(page);
+        await page.evaluate(() => window.scrollBy({ top: 300, behavior: "instant" }));
+        await frames(page, 4);
+        await page.evaluate(() => window.scrollBy({ top: -300, behavior: "instant" }));
+        await frames(page, 4);
+        const offDraws = (await draws(page)) - offStart;
+        check(past.mode === "3d" && past.canvas !== null && offDraws === 0, `cup: после прокрутки мимо сцена должна остаться и не рисовать (${JSON.stringify({ mode: past.mode, canvas: past.canvas !== null, offDraws })})`);
 
         // 6) возврат из меню: рамка над окном в зоне «рядом» (низ на 200 px выше окна) — сцена собирается за экраном
         // в текущей позе (p = 1, наклон) и подменяет рисунок сразу; потом медленно листаем вверх — пока рамка видна,
@@ -528,8 +535,8 @@ const scenarios = {
         await page.waitForFunction(() => document.querySelector("[data-cup-box]")?.dataset.cupMode === "3d", null, { timeout: 5000 }).catch(() => {});
         const ahead = await geometry(page);
         check(
-          ahead.mode === "3d" && ahead.swap === "instant" && ahead.box.bottom < 0 && ahead.boxCanvases === 1 && ahead.svgOpacity === "0" && ahead.canvasOpacity === "1",
-          `cup: возврат — сцена не собрана заранее за экраном с мгновенной подменой (${JSON.stringify({ mode: ahead.mode, swap: ahead.swap, bottom: Math.round(ahead.box.bottom), canvases: ahead.boxCanvases, svg: ahead.svgOpacity, canvas: ahead.canvasOpacity })})`,
+          ahead.mode === "3d" && ahead.box.bottom < 0 && ahead.boxCanvases === 1 && ahead.svgOpacity === "0" && ahead.canvasOpacity === "1",
+          `cup: возврат — на рамке не 3D-сцена (${JSON.stringify({ mode: ahead.mode, swap: ahead.swap, bottom: Math.round(ahead.box.bottom), canvases: ahead.boxCanvases, svg: ahead.svgOpacity, canvas: ahead.canvasOpacity })})`,
         );
         const entry = await page.evaluate(async () => {
           const box = document.querySelector("[data-cup-box]");
@@ -1287,7 +1294,7 @@ const scenarios = {
       console.log(`pour: кадров за секунду покоя — с фронтом ${idleFront}, без фронта ${idleBody}`);
       // на быстрой видеокарте сторож шейдер не трогает
       const kept = await page.evaluate(() => ({ mode: document.documentElement.dataset.pour, width: document.querySelector("[data-pour-layer] canvas")?.width }));
-      check(kept.mode === "gl" && kept.width === 585, `pour: сторож понизил перелив на быстрой видеокарте (${JSON.stringify(kept)})`);
+      check(kept.mode === "gl" && kept.width === Math.round(390 * 0.6), `pour: сторож понизил перелив на быстрой видеокарте (${JSON.stringify(kept)})`);
       check(errors.length === 0, `pour: ошибки на странице: ${errors.join(" | ")}`);
     } finally {
       await context.close();
@@ -1365,7 +1372,7 @@ const scenarios = {
         return { widths, demotedAt };
       });
       console.log(`pour-guard: ширина холста по ходу — ${run.widths.join(" → ")}, переход на CSS на кадре ${run.demotedAt}`);
-      check(run.widths[0] === 585 && run.widths.includes(390) && run.widths.at(-1) === 0, `pour-guard: не было шага «DPR 1,5 → 1 → CSS» (${run.widths.join(" → ")})`);
+      check(run.widths[0] === Math.round(390 * 0.6) && run.widths.includes(Math.round(390 * 0.4)) && run.widths.at(-1) === 0, `pour-guard: не было шага «0,6 → 0,4 → CSS» (${run.widths.join(" → ")})`);
       check(run.demotedAt >= 0, "pour-guard: слой не перешёл на CSS");
       const state = await page.evaluate(() => {
         const layer = document.querySelector("[data-pour-layer]");
