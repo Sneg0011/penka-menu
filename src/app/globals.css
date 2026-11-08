@@ -1,0 +1,417 @@
+@import "tailwindcss";
+
+/* Шрифты локальные (@fontsource, подключены в layout.tsx), с кириллицей:
+   Unbounded — заголовки разделов и карусель, Onest — текст и интерфейс, Marck Script — рукописные приписки. */
+@theme {
+  --font-sans: "Onest Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Unbounded Variable", "Onest Variable", system-ui, sans-serif;
+  --font-script: "Marck Script", "Segoe Script", cursive;
+}
+
+:root {
+  --bg: #1b110b;
+  --ink: #f5e8d6;
+  /* Липкая шапка: строка названия 48 px + карусель 52 px. На ней же отступ прокрутки к разделу. */
+  --chrome-h: 100px;
+  /* Ширина и высота «экрана»: на телефоне — окно браузера, с компьютера — экран рамки телефона. */
+  --sw: 100vw;
+  --screen-h: 100dvh;
+  --phone-w: 390px;
+  --phone-h: min(844px, calc(100dvh - 48px));
+  --phone-r: 46px;
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  /* overflow у html не задаём: блокировка прокрутки шторкой (body) должна доходить до окна */
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ───── Рамка телефона (PhoneFrame) ─────
+   Уже 768 px или ниже 600 px (телефон «лёжа», 844 × 390) — обычная страница, рамки нет. Иначе — телефон по центру,
+   меню прокручивается в нём. Условие то же, что FRAME_QUERY в src/motion/useSectionProgress.ts — менять вместе. */
+.pk-stage-note {
+  display: none;
+}
+
+/* ───── Перелив фона (PourBackground) ─────
+   Слой под меню, не прокручивается: на телефоне закреплён на окне (высота — с убранной адресной строкой,
+   чтобы при её сворачивании не открывался край), в рамке — на экране телефона. Пока слой работает
+   (`html[data-pour]`), у первого экрана и разделов своего фона нет — их цвета рисует слой. Без JS
+   разделы остаются со своим фоном. Футер — со своим. */
+.pk-pour {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: var(--bg);
+}
+html[data-pour] .pk-intro,
+html[data-pour] .pk-section {
+  background: transparent;
+}
+
+@media (min-width: 768px) and (min-height: 600px) {
+  :root {
+    --sw: var(--phone-w);
+    --screen-h: var(--phone-h);
+  }
+  .pk-stage {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    /* молоко вокруг эспрессо: светлое поле, тёплый свет сверху, телефон тёмный */
+    color: #2a1a10;
+    background:
+      radial-gradient(60% 70% at 50% 0%, rgb(255 250 240 / 0.7), transparent 70%),
+      #e8dccb;
+  }
+  .pk-device {
+    position: relative;
+    padding: 10px;
+    border-radius: calc(var(--phone-r) + 10px);
+    background: #1a110b;
+    box-shadow:
+      inset 0 0 0 1.5px #3a2a1f,
+      0 70px 90px -50px rgb(70 36 12 / 0.55),
+      0 30px 60px -36px rgb(70 36 12 / 0.45);
+  }
+  .pk-screen {
+    width: var(--phone-w);
+    height: var(--phone-h);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: var(--phone-r);
+    background: var(--bg);
+    scrollbar-width: none;
+    /* скругление обрезает и липкую шапку */
+    isolation: isolate;
+    position: relative;
+    z-index: 1;
+  }
+  .pk-screen::-webkit-scrollbar {
+    display: none;
+  }
+  /* слой перелива — под экраном, точно по нему: экран прокручивается поверх, слой стоит */
+  .pk-pour {
+    position: absolute;
+    inset: 10px;
+    width: auto;
+    height: auto;
+    z-index: 0;
+    border-radius: var(--phone-r);
+  }
+  html[data-pour] .pk-screen {
+    background: transparent;
+  }
+  /* Шторка (портал в body) садится поверх экрана телефона: та же ширина, высота и скругление */
+  [data-sheet="root"] {
+    inset: auto;
+    left: 50%;
+    top: 50%;
+    width: var(--phone-w);
+    height: var(--phone-h);
+    transform: translate(-50%, -50%);
+    border-radius: var(--phone-r);
+    overflow: hidden;
+  }
+  [data-sheet="root"] [role="dialog"] {
+    max-height: 88%;
+  }
+}
+
+@media (min-width: 1100px) and (min-height: 600px) {
+  .pk-stage-note {
+    display: block;
+    position: absolute;
+  }
+  .pk-stage-note--start {
+    left: 56px;
+    top: 48px;
+  }
+  .pk-stage-note--end {
+    right: 56px;
+    bottom: 48px;
+    text-align: right;
+  }
+}
+
+/* ───── Шапка и карусель ───── */
+/* шапка плавает над меню — мягкая тень снизу */
+.pk-chrome {
+  box-shadow: 0 16px 28px -26px rgb(30 14 4 / 0.6);
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease;
+}
+.pk-carousel {
+  mask-image: linear-gradient(90deg, transparent 0, #000 15%, #000 85%, transparent 100%);
+  overscroll-behavior-x: contain;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-chrome {
+    transition: none;
+  }
+}
+
+/* ───── Первый экран, разделы, футер ───── */
+.pk-intro {
+  background: var(--bg-0);
+  overflow-x: clip;
+}
+/* «Пенка» в Unbounded ≈ 3,8 кегля шириной: при 0,232 ширины экрана слово занимает ~88 % строки */
+.pk-hero {
+  font-size: min(92px, calc(var(--sw) * 0.232));
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+.pk-section {
+  position: relative;
+  background: linear-gradient(180deg, var(--bg-0), var(--bg-1));
+  scroll-margin-top: var(--chrome-h);
+  overflow-x: clip;
+}
+/* ───── Стаканчик первого экрана (Hero) ─────
+   Стоит последним на первом экране, прямо над «Кофе»: слева подсказка и адрес (низ текста — на уровне донышка),
+   справа рамка стаканчика. Её пропорции — переменные из CUP_VIEW (Hero ставит их на строку): --cup-h — высота,
+   --cup-base — донышко, --cup-layout — низ для вёрстки, всё на 1 px ширины. В рамке SVG-рисунок, поверх него —
+   холст 3D той же величины: проявляется за 0,45 с, рисунок под ним гаснет, когда холст уже непрозрачен;
+   обратно (контекст отпущен, рамка за экраном) — сразу. Рамка заходит в правое поле экрана. */
+.pk-cup-row {
+  --cup-w: min(200px, calc(var(--sw) * 0.5));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--cup-w);
+  align-items: end;
+  column-gap: 8px;
+  /* верх рамки пустой (запас на подъём и наклон) — подтягиваем её к кнопкам */
+  margin-top: -8px;
+  margin-right: -12px;
+  /* низ рамки ниже --cup-layout (только конец струи) заходит под обложку «Кофе»: струя наливает в стакан латте */
+  margin-bottom: calc(var(--cup-w) * (var(--cup-layout) - var(--cup-h)));
+}
+.pk-cup-caption {
+  /* низ текста — на уровне донышка */
+  padding-bottom: calc(var(--cup-w) * (var(--cup-h) - var(--cup-base)));
+}
+.pk-cup {
+  position: relative;
+  height: calc(var(--cup-w) * var(--cup-h));
+  pointer-events: none;
+}
+.pk-cup > svg,
+.pk-cup > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.pk-cup > canvas {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+.pk-cup[data-cup-mode="3d"] > canvas {
+  opacity: 1;
+}
+/* рисунок гаснет, когда холст проявился целиком: без провала прозрачности посередине */
+.pk-cup[data-cup-mode="3d"] > svg {
+  opacity: 0;
+  transition: opacity 0s linear 0.45s;
+}
+/* сцену собрали заранее за экраном или стаканчик уже не в позе рисунка — подмена сразу, без двойной экспозиции */
+.pk-cup[data-cup-swap="instant"] > canvas,
+.pk-cup[data-cup-swap="instant"] > svg {
+  transition: none;
+}
+/* тёплое пятно света на «столе» под стаканчиком — одно на рисунок и 3D */
+.pk-cup::before {
+  content: "";
+  position: absolute;
+  left: -16%;
+  right: -16%;
+  top: 52%;
+  bottom: 4%;
+  background: radial-gradient(closest-side, rgb(224 167 105 / 0.14), rgb(224 167 105 / 0));
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-cup > canvas,
+  .pk-cup[data-cup-mode="3d"] > svg {
+    transition: none;
+  }
+}
+
+/* последний раздел доходит до линии чтения, даже если он короткий */
+.pk-section:last-of-type {
+  min-height: calc(var(--screen-h) - var(--chrome-h));
+}
+/* Рукописная приписка поверх заголовка: цвет акцента, тонкий «вырез» цветом фона там, где она ложится на буквы */
+.pk-note {
+  color: var(--accent);
+  transform: rotate(-7deg);
+  transform-origin: 100% 100%;
+  -webkit-text-stroke: 0.16em var(--bg-0);
+  paint-order: stroke fill;
+  /* пробел у рукописного шрифта широкий — «с пенкой» должно читаться одной фразой */
+  word-spacing: -0.2em;
+}
+/* Тёплая мягкая тень под чашками обложки, на тёмных разделах — глубже. У тарелок своя тень в рисунке:
+   общая тень повторила бы её срез по краю рисунка. */
+.pk-cover-art--drinks {
+  filter: drop-shadow(0 18px 20px rgb(74 38 12 / 0.26));
+}
+[data-tone="dark"] .pk-cover-art--drinks {
+  filter: drop-shadow(0 22px 24px rgb(0 0 0 / 0.55));
+}
+/* тень тарелки внутри рисунка обрезана краем рисунка — на крупной тарелке срез заметен, гасим низ */
+.pk-cover-art--food svg {
+  mask-image: linear-gradient(180deg, #000 92%, transparent 100%);
+}
+.pk-footer {
+  background: var(--bg-0);
+  overflow-x: clip;
+}
+
+/* ───── Вход «Что вы обычно пьёте?» (HabitPicker) и подборка (HabitSheet) ─────
+   Кнопка — как клавиша: чуть светлее фона раздела (тёмный эспрессо), светлая кромка сверху, тёмная «ножка» снизу.
+   При нажатии кнопка проваливается на высоту ножки. Выбранная ранее — кромка цвета акцента. Цвета — переменные
+   раздела (--ink, --accent, --bg-0), поэтому работает на любом фоне. */
+.pk-habit {
+  --key-fill: color-mix(in srgb, var(--ink) 8%, var(--bg-0));
+  --key-edge: color-mix(in srgb, var(--ink) 15%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  height: 100%;
+  min-height: 3.5rem;
+  padding: 0.5rem 0.875rem 0.5rem 1rem;
+  border-radius: 16px;
+  color: var(--ink);
+  background: var(--key-fill);
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 500;
+  text-align: left;
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--key-edge),
+    inset 0 1px 0 rgb(255 236 210 / 0.1),
+    0 3px 0 -1px rgb(0 0 0 / 0.5);
+  transition:
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out,
+    background-color 0.15s ease;
+}
+.pk-habit-arrow {
+  color: var(--accent);
+  transition: transform 0.15s ease-out;
+}
+@media (hover: hover) {
+  .pk-habit:hover {
+    --key-fill: color-mix(in srgb, var(--ink) 13%, var(--bg-0));
+  }
+  .pk-habit:hover .pk-habit-arrow {
+    transform: translateX(2px);
+  }
+}
+.pk-habit:active {
+  --key-fill: color-mix(in srgb, var(--ink) 5%, var(--bg-0));
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 0 0 1px var(--key-edge),
+    inset 0 1px 0 rgb(0 0 0 / 0.25),
+    0 1px 0 -1px rgb(0 0 0 / 0.5);
+}
+.pk-habit:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--key-edge),
+    0 0 0 2px var(--bg-0),
+    0 0 0 4px var(--accent);
+}
+.pk-habit[data-picked] {
+  --key-edge: var(--accent);
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    inset 0 1px 0 rgb(255 236 210 / 0.1),
+    0 3px 0 -1px rgb(0 0 0 / 0.5);
+}
+.pk-habit[data-picked]:focus-visible {
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    0 0 0 2px var(--bg-0),
+    0 0 0 4px var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-habit,
+  .pk-habit-arrow {
+    transition: none;
+  }
+  .pk-habit:active {
+    transform: none;
+  }
+  .pk-habit:hover .pk-habit-arrow {
+    transform: none;
+  }
+}
+/* Слова гостя: приглушённо, с тонкой линией акцента слева (как отзывы в карточке позиции). Кавычек нет:
+   в самих отзывах уже есть «ёлочки» — вложенные и подряд идущие выглядели бы небрежно. */
+.pk-quote {
+  padding-left: 0.75rem;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--muted, inherit);
+}
+
+/* ───── Карточки позиций и шторки ─────
+   Цвета берёт раздел или шторка: --muted (приглушённый текст) и --accent (заливка точек, чипы).
+   Если их не задали, считаются от текущего цвета текста. Доли подобраны так, чтобы приглушённый
+   текст (в том числе 11 px «примерно») читался с контрастом ≥ 4,5 : 1 на обоих цветах фона каждого
+   раздела; это проверяет tests/item.test.tsx — править доли только вместе с тестом.
+   Свой --muted у раздела должен давать те же 4,5 : 1. */
+@utility pk-muted {
+  color: var(--muted, color-mix(in srgb, currentColor 86%, transparent));
+}
+/* Чип: текст чуть плотнее обычного приглушённого, подложка — лёгкий оттенок самого текста */
+@utility pk-chip {
+  color: var(--muted, color-mix(in srgb, currentColor 90%, transparent));
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+}
+@utility pk-accent {
+  color: var(--accent, currentColor);
+}
+@utility pk-accent-fill {
+  background-color: var(--accent, currentColor);
+}
+
+@keyframes pk-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes pk-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
