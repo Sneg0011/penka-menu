@@ -8,9 +8,11 @@
 //                          у шапки цвет текста = `ink` последнего раздела, в карусели текущий — «Десерты»,
 //                          фон под меню — цвет «Десертов» (перелив не застрял на полпути).
 //   sections             — 390×844: первый экран, каждый раздел, футер и открытая шторка → scripts/shots/page-*.png
-//   desktop              — 1440×900: телефон по центру, раздел внутри рамки, шторка поверх телефона → scripts/shots/desktop-*.png
+//   desktop              — 1440×900: телефон по центру, QR сцены читается и ведёт на страницу, раздел внутри рамки,
+//                          шторка поверх телефона → scripts/shots/desktop-*.png
 //   landscape            — 844×390 (телефон «лёжа»): рамки нет, страница прокручивается сама, шире окна не бывает; на границе
-//                          рамки: 1440×590 — без рамки, 1440×600 и 1024×600 — с рамкой → scripts/shots/landscape-*.png
+//                          рамки: 1440×590 — без рамки, 1440×600 (сцена с QR после расширения) и 1024×600 — с рамкой
+//                          → scripts/shots/landscape-*.png
 //   no-overflow-360      — 360×780: страницу прокручивают целиком, потом открывают шторки позиций с самыми длинными названиями
 //                          и ценами; на каждом шаге страница не шире окна, цена в строке и в шторке видна целиком
 //   habit                — 390×844: вход «Что вы обычно пьёте?» целиком на первом экране; тап по привычке открывает подборку,
@@ -22,16 +24,16 @@
 //   pour                 — 390×844, WebGL: медленная прокрутка через границы «Кофе → Рафы» и «Вафли → Супы», кадры
 //                          на t = 0 / 0,5 / 1 → scripts/shots/pour-*.png; на каждом кадре — наименьший контраст текста
 //                          с фоном под ним (≥ 4,5); в покое кадры не рисуются; то же в рамке телефона → pour-desktop.png
-//   pour-guard           — 390×844, `/?pour=slow` (к каждому кадру +30 мс): сторож видеокарты сначала снижает DPR
-//                          холста до 1, потом насовсем переводит слой на CSS-градиент; в момент, когда холст убран,
+//   pour-guard           — 390×844, `/?pour=slow` (к каждому кадру +30 мс): сторож видеокарты сначала снижает разрешение
+//                          холста с 0,6 до 0,4 от CSS-пикселей, потом насовсем переводит слой на CSS-градиент; в момент, когда холст убран,
 //                          градиент уже на месте (без пустого кадра); шапка перекрашивается, фон раздела верный,
 //                          ошибок нет; после перехода на `/` без флага в той же вкладке шейдер не возвращается
 //   hero-in-static-html  — `out/index.html` (без браузера): есть «Что вы обычно пьёте?», есть svg[data-cup="fallback"],
 //                          нет `<canvas`: первый экран со стаканчиком-рисунком приходит без JS.
 //   cup                  — 390×844 в Chrome с видеокартой (флаги ANGLE/D3D11, без OffscreenCanvas): через 4 с после load SVG-стаканчик
 //                          подменяется 3D в той же рамке (без сдвига вёрстки), кадры на 0 / 50 / 100 % прокрутки первого экрана →
-//                          scripts/shots/cup-*.png; в покое кадры не рисуются; прокрутили мимо — контекст отпущен, вернулись —
-//                          3D снова; возврат из меню — сцена собрана заранее за экраном, рисунок и 3D не видны вместе
+//                          scripts/shots/cup-*.png; в покое кадры не рисуются; прокрутили мимо — сцена остаётся, но не рисует;
+//                          возврат из меню — на рамке уже 3D, рисунок и 3D не видны вместе
 //                          (scripts/shots/cup-return.png); «уменьшить движение», вердикт перелива «css» и упавшая сборка
 //                          сцены — только SVG, без утёкшего контекста.
 //   hydration            — сам поднимает `next dev` (порт 3220), открывает меню и ищет в консоли
@@ -527,8 +529,8 @@ const scenarios = {
         const offDraws = (await draws(page)) - offStart;
         check(past.mode === "3d" && past.canvas !== null && offDraws === 0, `cup: после прокрутки мимо сцена должна остаться и не рисовать (${JSON.stringify({ mode: past.mode, canvas: past.canvas !== null, offDraws })})`);
 
-        // 6) возврат из меню: рамка над окном в зоне «рядом» (низ на 200 px выше окна) — сцена собирается за экраном
-        // в текущей позе (p = 1, наклон) и подменяет рисунок сразу; потом медленно листаем вверх — пока рамка видна,
+        // 6) возврат из меню: рамка над окном в зоне «рядом» (низ на 200 px выше окна) — на ней всё та же 3D-сцена
+        // (её не отпускали), рисунок скрыт; потом медленно листаем вверх — пока рамка видна,
         // ни в одном кадре рисунок и 3D не видны вместе
         await page.evaluate(() => window.scrollBy({ top: document.querySelector("[data-cup-box]").getBoundingClientRect().bottom + 200, behavior: "instant" }));
         await waitScrollStill(page);
@@ -773,6 +775,25 @@ const scenarios = {
       check(Math.abs(frame.cx - 720) <= 1 && Math.abs(frame.cy - 450) <= 1, `desktop: телефон не по центру (${frame.cx}, ${frame.cy})`);
       check(frame.scrolls === "auto", "desktop: меню прокручивается не внутри телефона");
       check(frame.pageScroll <= 0, `desktop: сама страница прокручивается на ${frame.pageScroll} px`);
+
+      // QR сцены нарисован и ведёт на эту страницу (декодер jsQR, как у таблички)
+      await page.waitForSelector(".pk-stage-qr-code svg", { timeout: 5000 }).catch(() => {});
+      await page.addScriptTag({ path: `${projectRoot}node_modules/jsqr/dist/jsQR.js` });
+      const qr = await page.evaluate(async () => {
+        const svg = document.querySelector(".pk-stage-qr-code svg");
+        if (!svg) return null;
+        const img = new Image();
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.outerHTML)}`;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = c.height = 480;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#f5e8d6";
+        ctx.fillRect(0, 0, 480, 480);
+        ctx.drawImage(img, 40, 40, 400, 400);
+        return window.jsQR(ctx.getImageData(0, 0, 480, 480).data, 480, 480)?.data ?? "";
+      });
+      check(qr === `${origin}/`, `desktop: QR сцены ${qr === null ? "не нарисован" : `читается как «${qr}», ожидался «${origin}/»`}`);
       await page.screenshot({ path: `${out}desktop.png` });
       console.log(`${out}desktop.png`);
 
@@ -889,6 +910,11 @@ const scenarios = {
         }));
         const noteShown = f.notes.some((d) => d !== "none");
         check(f.fixed === frame && (f.overflow === "auto") === frame && (w < 1100 ? !noteShown : noteShown === frame) && f.hOverflow <= 0, `landscape: ${w}×${h} — ожидалась ${frame ? "рамка" : "страница"} (${JSON.stringify(f)})`);
+        // страницу открыли узкой и расширили — на сцене не пустая карточка, а QR
+        if (noteShown) {
+          const qr = await page.waitForSelector(".pk-stage-qr-code svg", { timeout: 5000 }).then(() => true).catch(() => false);
+          check(qr, `landscape: ${w}×${h} — сцена появилась после расширения окна, а QR на ней не нарисован`);
+        }
         if (w === 1440) {
           await page.screenshot({ path: `${out}landscape-${w}x${h}.png` });
           console.log(`${out}landscape-${w}x${h}.png`);
@@ -1340,7 +1366,7 @@ const scenarios = {
       new MutationObserver((records) => {
         for (const r of records)
           for (const n of r.removedNodes)
-            // холст 3D-стаканчика отпускается при прокрутке мимо первого экрана — это не понижение перелива
+            // холст 3D-стаканчика (data-cup) убирается только при потере контекста — это не понижение перелива
             if (n.nodeName === "CANVAS" && !n.hasAttribute("data-cup")) {
               const layer = document.querySelector("[data-pour-layer]");
               window.__pourDemotion = { mode: document.documentElement.dataset.pour, image: layer.style.backgroundImage.slice(0, 15), canvases: layer.querySelectorAll("canvas").length };

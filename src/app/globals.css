@@ -167,29 +167,20 @@ html[data-pour] .pk-section {
     max-width: calc((100vw - var(--phone-w) - 20px) / 2 - 112px);
     font-size: 13px;
     color: rgb(245 232 214 / 0.62);
+    /* без одинокого слова на последней строке */
+    text-wrap: balance;
   }
   .pk-stage-title {
-    position: relative;
-    display: inline-block;
-    font-size: clamp(56px, 6.2vw, 104px);
-    line-height: 0.9;
-    letter-spacing: -0.05em;
-  }
-  .pk-stage-script {
-    position: absolute;
-    right: -0.15em;
-    bottom: -0.55em;
-    font-size: 0.5em;
-    font-weight: 400;
-    letter-spacing: 0;
+    font-size: 56px;
+    line-height: 1;
     color: #e0a769;
-    transform: rotate(-6deg);
   }
   .pk-stage-lead {
-    margin-top: 56px;
-    font-size: 22px;
-    line-height: 1.3;
-    font-weight: 600;
+    margin-top: 18px;
+    font-size: clamp(26px, 2.5vw, 38px);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
   }
   .pk-stage-text {
     margin-top: 12px;
@@ -259,7 +250,7 @@ html[data-pour] .pk-section {
    справа рамка стаканчика. Её пропорции — переменные из CUP_VIEW (Hero ставит их на строку): --cup-h — высота,
    --cup-base — донышко, --cup-layout — низ для вёрстки, всё на 1 px ширины. В рамке SVG-рисунок, поверх него —
    холст 3D той же величины: проявляется за 0,45 с, рисунок под ним гаснет, когда холст уже непрозрачен;
-   обратно (контекст отпущен, рамка за экраном) — сразу. Рамка заходит в правое поле экрана. */
+   обратно (контекст потерян) — сразу. Рамка заходит в правое поле экрана. */
 .pk-cup-row {
   --cup-w: min(200px, calc(var(--sw) * 0.5));
   display: grid;

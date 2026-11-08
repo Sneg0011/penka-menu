@@ -33,7 +33,7 @@ test("реальная позиция с точной ценой: цена бе�
   expect(screen.queryByText(/≈/)).toBeNull();
 });
 
-test("придуманная позиция: «примерно» и у цены, и у значков; объём с «≈»", () => {
+test("придуманная позиция: «примерно» и у цены, и у вкуса с калориями; объём с «≈»", () => {
   render(<ItemRow item={item("latte")} onOpen={() => {}} />);
   expect(screen.getAllByText(/примерно/)).toHaveLength(2);
   expect(screen.getByText("≈ 300 мл")).toBeInTheDocument();
@@ -66,6 +66,8 @@ test("вкус словами: крепость 3 первой, затем вы�
   expect(tasteWords(item("raf-pistachio"))).toBe("Сладкий, мягкий");
   expect(tasteWords(item("mors-cranberry"))).toBe("С яркой кислинкой");
   expect(tasteWords(item("tea-green"))).toBe("Мягкий");
+  // три слабые ноты — не «мягкий»: имбирный чай в описании «острый», строка молчит, точки — в шторке
+  expect(tasteWords(item("tea-ginger"))).toBeNull();
   expect(tasteWords(menu.find((i) => !i.taste)!)).toBeNull();
 });
 

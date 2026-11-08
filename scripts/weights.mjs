@@ -30,7 +30,12 @@ const chunks = (await readdir(`${out}_next/static/chunks`)).filter((f) => f.ends
 for (const file of chunks) {
   const text = await readFile(`${out}_next/static/chunks/${file}`, "utf8");
   const s = await size(`${out}_next/static/chunks/${file}`);
-  const what = /WebGLRenderer|REVISION/.test(text) ? "ленивый чанк: three.js + 3D-стаканчик" : "ленивый чанк: шейдер перелива фона";
+  // генератор QR сцены с компьютера (StageQr) — тоже ленивый чанк; без этой метки он числился «шейдером»
+  const what = /WebGLRenderer|REVISION/.test(text)
+    ? "ленивый чанк: three.js + 3D-стаканчик"
+    : /toSJIS|Reed-Solomon|getSymbolSize/.test(text)
+      ? "ленивый чанк: генератор QR для сцены с компьютера"
+      : "ленивый чанк: шейдер перелива фона";
   console.log(`${what} (${file}): ${kb(s.raw)} raw / ${kb(s.gz)} gzip`);
 }
 

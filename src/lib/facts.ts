@@ -31,7 +31,9 @@ const NOTES: readonly { key: "sweet" | "bitter" | "sour"; words: Partial<Record<
 /**
  * Вкус для строки меню словами, а не значками: «Крепкий, горький», «Сладковатый, мягкий», «С кислинкой».
  * Не больше двух слов: крепость 3 — «крепкий» первым, затем самые выраженные шкалы (от 2 из 3), а мягкий эспрессо
- * (крепость до 1) или напиток без выраженных нот — «мягкий». Без шкал вкуса (еда) — `null`.
+ * (крепость до 1) или напиток почти без нот (одна слабая, как у зелёного чая) — «мягкий». Без шкал вкуса (еда) — `null`.
+ * Несколько слабых нот сразу — это не «мягкий»: у имбирного чая (1/1/1, в описании «острый») строка соврала бы,
+ * поэтому там слов нет — вкус точками остаётся в шторке.
  */
 export function tasteWords(item: Item): string | null {
   if (!item.taste) return null;
@@ -42,7 +44,10 @@ export function tasteWords(item: Item): string | null {
     const word = n.words[n.value];
     if (word && parts.length < 2) parts.push(word);
   }
-  if (parts.length < 2 && (parts.length === 0 || (item.strength !== undefined && item.strength <= 1))) parts.push("мягкий");
+  const coffee = item.strength !== undefined;
+  const quiet = notes.filter((n) => n.value > 0).length <= 1;
+  if (parts.length < 2 && ((parts.length === 0 && (coffee || quiet)) || (coffee && item.strength! <= 1))) parts.push("мягкий");
+  if (parts.length === 0) return null;
   const text = parts.join(", ");
   return text[0].toUpperCase() + text.slice(1);
 }

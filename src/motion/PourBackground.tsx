@@ -9,8 +9,8 @@ import { edgeFrom, POUR_SESSION_KEY, pourGradient, pourSections, type PourEdge, 
 import type { PourFallback, PourRenderer } from "./pourShader";
 import { CHROME_ATTR, getSectionProgress, scrollRoot, subscribeSectionProgress } from "./useSectionProgress";
 
-/** Строка меню — кнопка с py-3: текст кончается на 12 px выше её низа. */
-const ROW_PAD = 12;
+/** Строка меню — кнопка с py-3.5 (ItemRow): текст кончается на 14 px выше её низа. */
+const ROW_PAD = 14;
 /** Буквы заголовка раздела (Unbounded, межстрочный 0,98) выступают над его рамкой на ~6 px. */
 const TITLE_OVERHANG = 6;
 /** Видеокарта не потянула перелив — до конца сессии вкладки только CSS-градиент (и после перезагрузки). */

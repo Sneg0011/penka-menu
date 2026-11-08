@@ -63,12 +63,10 @@ export function ItemRow({ item, onOpen }: Props) {
 
         <span id={factsId} className="mt-1 flex flex-col gap-0.5 text-[13px] leading-[1.35]">
           {taste && <span className="font-medium">{taste}</span>}
+          {/* пробелы — вне скрытых точек: иначе описание кнопки для скринридера склеивается в «300 мл170 ккалпримерно» */}
           <span className="pk-muted">
-            <span className="whitespace-nowrap">{sizeText(item)}</span>
-            <span aria-hidden="true"> · </span>
-            <span className="whitespace-nowrap">{item.kcal} ккал</span>
-            <span aria-hidden="true"> · </span>
-            <span>примерно</span>
+            <span className="whitespace-nowrap">{sizeText(item)}</span> <span aria-hidden="true">·</span>{" "}
+            <span className="whitespace-nowrap">{item.kcal} ккал</span> <span aria-hidden="true">·</span> <span>примерно</span>
           </span>
           {item.plantMilk && <span className="pk-accent text-[12px] font-medium">можно на растительном</span>}
         </span>

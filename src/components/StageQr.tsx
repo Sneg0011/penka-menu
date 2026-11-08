@@ -8,24 +8,35 @@ const WIDE = "(min-width: 1100px) and (min-height: 600px)";
 /**
  * QR-код адреса этой страницы для сцены с компьютера: навёл телефон — меню открылось на телефоне.
  * Генератор (`qrcode`) грузится отдельным чанком и только на широком экране — на телефоне его нет.
+ * Окно могли открыть узким и потом расширить — тогда код рисуется в момент, когда сцена появилась
+ * (иначе на ней осталась бы пустая светлая карточка). Рисуется один раз.
  * Тёмные модули на светлом поле: так его читают все камеры.
  */
 export function StageQr() {
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!window.matchMedia(WIDE).matches) return;
+    const wide = window.matchMedia(WIDE);
     let cancelled = false;
-    import("qrcode")
-      .then(({ toString }) => toString(window.location.href.split("#")[0], { type: "svg", errorCorrectionLevel: "M", margin: 0, color: { dark: "#1b110b", light: "#0000" } }))
-      .then((svg) => {
-        if (!cancelled && box.current) box.current.innerHTML = svg;
-      })
-      .catch(() => {
-        // не вышло — остаётся подпись без кода, меню работает
-      });
+    let started = false;
+    const draw = () => {
+      if (started || !wide.matches) return;
+      started = true;
+      wide.removeEventListener?.("change", draw);
+      import("qrcode")
+        .then(({ toString }) => toString(window.location.href.split("#")[0], { type: "svg", errorCorrectionLevel: "M", margin: 0, color: { dark: "#1b110b", light: "#0000" } }))
+        .then((svg) => {
+          if (!cancelled && box.current) box.current.innerHTML = svg;
+        })
+        .catch(() => {
+          // не вышло — остаётся подпись без кода, меню работает
+        });
+    };
+    wide.addEventListener?.("change", draw);
+    draw();
     return () => {
       cancelled = true;
+      wide.removeEventListener?.("change", draw);
     };
   }, []);
 

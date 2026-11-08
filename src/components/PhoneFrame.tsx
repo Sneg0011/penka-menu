@@ -17,11 +17,9 @@ export function PhoneFrame({ children, backdrop }: { children: ReactNode; backdr
   return (
     <div className="pk-stage">
       <div className="pk-stage-note pk-stage-note--start" aria-hidden="true">
-        <p className="pk-stage-title font-display font-extrabold">
-          Пенка
-          <span className="pk-stage-script font-script">меню</span>
-        </p>
-        <p className="pk-stage-lead">QR-меню для гостей за столом.</p>
+        {/* крупное «Пенка меню» уже есть в телефоне — сбоку рукописная подпись и то, что это такое */}
+        <p className="pk-stage-title font-script">Пенка</p>
+        <p className="pk-stage-lead font-display font-extrabold">QR-меню для гостей за&nbsp;столом</p>
         <p className="pk-stage-text">Состав, вкус и цена каждой позиции, подбор напитка по привычке. Меню листается прямо в телефоне.</p>
       </div>
       <div className="pk-stage-note pk-stage-note--end" aria-hidden="true">
